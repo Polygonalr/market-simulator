@@ -1,3 +1,6 @@
+#ifndef BOOK_HPP
+#define BOOK_HPP
+
 struct Order {
     uint32_t order_id;
     uint32_t price;
@@ -17,8 +20,15 @@ struct SamePriceQueue {
 };
 
 class Book {
-    std::shared_ptr<std::vector<std::shared_ptr<SamePriceQueue>>> buys;
-    std::shared_ptr<std::vector<std::shared_ptr<SamePriceQueue>>> sells;
+  private:
+    std::set<SamePriceQueue> buys;
+    std::set<SamePriceQueue> sells;
 
-    std::shared_ptr<std::mutex> lock;
+    std::mutex lock;
+
+  public:
+    Book();
+    void send_order(ClientCommand command);
 };
+
+#endif // BOOK_HPP

@@ -19,38 +19,36 @@ std::vector<std::string> split(const std::string &s, char delim) {
     return result;
 }
 
-void Engine::client_do_read(
-    shared_ptr<boost::asio::ip::tcp::socket> socket_ptr) {
+void Client::do_read() {
     int max_length = 128;
     auto read_buffer = make_shared<string>(max_length, '\0');
     socket_ptr->async_read_some(
         boost::asio::buffer(*read_buffer, max_length),
-        [this, socket_ptr, read_buffer](boost::system::error_code ec,
-                                        std::size_t) {
+        [this, read_buffer](boost::system::error_code ec, std::size_t) {
             if (ec == boost::asio::error::eof ||
                 ec == boost::asio::error::connection_reset) {
-                cout << "Client "
-                     << " disconnected\n";
+                cout << "Client disconnected\n";
             } else if (!ec) {
                 cout << "Received message: " << *read_buffer << endl;
-                client_do_write(socket_ptr, *read_buffer);
+                this->do_write(read_buffer);
+                ClientCommand command =
+                    ClientCommand::parse_command(string(*read_buffer));
             }
         });
 }
 
-void Engine::client_do_write(shared_ptr<boost::asio::ip::tcp::socket> socket,
-                             string write_buffer) {
-    socket->async_write_some(
-        boost::asio::buffer(write_buffer),
-        [this, socket](boost::system::error_code ec, std::size_t) {
+void Client::do_write(std::shared_ptr<std::string> write_buffer) {
+    socket_ptr->async_write_some(
+        boost::asio::buffer(*write_buffer),
+        [this, &write_buffer](boost::system::error_code ec, std::size_t) {
             if (!ec) {
                 cout << "Sent message back" << endl;
-                client_do_read(socket);
+                this->do_read();
             }
         });
 }
 
-Engine::Engine() { cout << "Engine created" << endl; }
+Engine::Engine() : next_client_id(0) { cout << "Engine created" << endl; }
 
 Engine::~Engine() { cout << "Engine destroyed" << endl; }
 
@@ -61,14 +59,22 @@ Engine &Engine::get_instance() {
 
 void Engine::start_client_session(
     shared_ptr<boost::asio::ip::tcp::socket> socket) {
-    int client_id = next_client_id++;
+    int client_id;
+    {
+        // critical section
+        std::lock_guard<std::mutex> guard(client_data_lock);
+        client_id = next_client_id++;
+        client_data.emplace_back(
+            std::make_unique<Client>(Client{(uint32_t)client_id, socket}));
+    }
     cout << "Client " << client_id << " connected" << endl;
-    client_do_read(socket);
+    client_data[client_id]->do_read();
 }
 
-ClientCommand ClientCommand::parse_command(string s) {
-    vector<string> splitted_string = split(s, ' ');
-    string instrument = splitted_string[4];
+ClientCommand ClientCommand::parse_command(const string &s) {
+    std::vector<string> splitted_string = split(s, ' ');
+    string instrument = splitted_string[1];
+    // limit instrument string to 8 characters
     if (instrument.size() > 8) {
         instrument = instrument.substr(0, 8);
     }
@@ -76,18 +82,17 @@ ClientCommand ClientCommand::parse_command(string s) {
                    ::toupper);
     ClientCommand cc = ClientCommand{
         .type = static_cast<CommandType>(splitted_string[0][0]),
-        .order_id = static_cast<uint32_t>(stoul(splitted_string[1])),
-        .price = static_cast<uint32_t>(stoul(splitted_string[2])),
-        .count = static_cast<uint32_t>(stoul(splitted_string[3])),
+        .price = static_cast<uint32_t>(stoul(splitted_string[3])),
+        .count = static_cast<uint32_t>(stoul(splitted_string[2])),
     };
-    strcpy(cc.instrument, instrument.c_str());
+    cc.instrument = instrument;
     return cc;
 }
 
 string ClientCommand::to_string() const {
     stringstream ss;
-    ss << static_cast<char>(type) << " " << order_id << " " << price << " "
-       << count << " " << instrument;
+    ss << static_cast<char>(type) << " " << price << " " << count << " "
+       << instrument;
     return ss.str();
 }
 
