@@ -2,7 +2,12 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <shared_mutex>
+#include <deque>
+#include <set>
 #include "engine.hpp"
+#include "book.hpp"
+#include "market.hpp"
 
 using namespace std;
 using boost::asio::ip::tcp;
@@ -33,6 +38,8 @@ void Client::do_read() {
                 this->do_write(read_buffer);
                 ClientCommand command =
                     ClientCommand::parse_command(string(*read_buffer));
+                Market& market_instance = Market::get_instance();
+                market_instance.send_order(command);
             }
         });
 }
@@ -40,7 +47,7 @@ void Client::do_read() {
 void Client::do_write(std::shared_ptr<std::string> write_buffer) {
     socket_ptr->async_write_some(
         boost::asio::buffer(*write_buffer),
-        [this, &write_buffer](boost::system::error_code ec, std::size_t) {
+        [this](boost::system::error_code ec, std::size_t) {
             if (!ec) {
                 cout << "Sent message back" << endl;
                 this->do_read();

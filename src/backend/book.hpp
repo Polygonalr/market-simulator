@@ -19,13 +19,14 @@ struct SamePriceQueue {
     void clear_queue();
 };
 
+auto spq_inc_cmp = [](SamePriceQueue a, SamePriceQueue b) { return a.price < b.price; };
+auto spq_dec_cmp = [](SamePriceQueue a, SamePriceQueue b) { return a.price > b.price; };
+
 class Book {
   private:
-    std::set<SamePriceQueue> buys;
-    std::set<SamePriceQueue> sells;
-
+    std::set<SamePriceQueue, decltype(spq_inc_cmp)> buys;
+    std::set<SamePriceQueue, decltype(spq_dec_cmp)> sells;
     std::mutex lock;
-
   public:
     Book();
     void send_order(ClientCommand command);

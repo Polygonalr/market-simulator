@@ -8,5 +8,6 @@ class Market {
     void operator=(Market const &) = delete;
 
   private:
+    std::shared_mutex read_write_lock;
     std::unordered_map<std::string, Book> order_books;
 };
