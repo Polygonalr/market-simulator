@@ -9,6 +9,7 @@
 #include <set>
 #include <shared_mutex>
 #include "engine.hpp"
+#include "spq.hpp"
 #include "book.hpp"
 #include "market.hpp"
 
@@ -24,6 +25,7 @@ Market &Market::get_instance() {
 void Market::send_order(ClientCommand command) {
     std::shared_lock lock(this->read_write_lock);
     if (this->order_books.find(command.instrument) == this->order_books.end()) {
+        // instrument not found, get writer's lock and add it in.
         lock.unlock();
         std::unique_lock ulock(this->read_write_lock);
         // will do nothing if another thread has already added the instrument, so no further check is required.

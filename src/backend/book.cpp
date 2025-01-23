@@ -7,50 +7,8 @@
 #include <deque>
 #include <iostream>
 #include "engine.hpp"
+#include "spq.hpp"
 #include "book.hpp"
-
-bool SamePriceQueue::can_match(Order order) {
-    if (order.order_type == buy) {
-        return price <= order.price;
-    }
-    return order.price <= price;
-}
-
-void SamePriceQueue::add_order(Order order) {
-    this->orders.push_back(order);
-    this->volume += order.count;
-}
-
-/**
- * Takes in the order to be matched with the orders from current SPQ, prints all
- * the matched orders and returns the order with its new volume after orders are
- * matched.
- */
-Order SamePriceQueue::match_order(Order order) {
-    while (this->orders.size() != 0 && order.count != 0) {
-        Order next_order = this->orders.front();
-        if (next_order.count > order.count) {
-            // Fulfill the order in the orderbook partially
-            this->orders.front().count -= order.count;
-            this->volume -= order.count;
-            order.count = 0;
-
-            std::cout << "Matched order " << order.order_id << " with "
-                      << next_order.order_id << " at price " << next_order.price
-                      << ", counts fulfilled: " << order.count << std::endl;
-
-            return order;
-        }
-        // Fulfill the order in the orderbook fully
-        order.count -= next_order.count;
-        this->volume -= next_order.count;
-        this->orders.pop_front();
-        std::cout << "Matched order " << order.order_id << " with "
-                  << next_order.order_id << " at price " << next_order.price
-                  << ", counts fulfilled: " << next_order.count << std::endl;
-    }
-    return order;
-}
 
 void Book::create_spq(uint32_t price, OrderType type) {
     switch (type) {
@@ -64,6 +22,40 @@ void Book::create_spq(uint32_t price, OrderType type) {
 }
 
 void Book::add_order_to_spq(Order order) {
+    std::lock_guard<std::mutex> book_lock{this->lock};
+    if (order.order_type == buy) {
+        for (auto spq : this->sells) {
+            if (spq->can_match(order)) {
+                order = spq->match_order(order);
+            }
+        }
+        if (order.count != 0) {
+            for (auto spq : this->buys) {
+                if (spq->price == order.price) {
+                    spq->add_order(order);
+                    return;
+                }
+            }
+            this->create_spq(order.price, buy);
+            this->buys.begin()->get()->add_order(order);
+        }
+    } else {
+        for (auto spq : this->buys) {
+            if (spq->can_match(order)) {
+                order = spq->match_order(order);
+            }
+        }
+        if (order.count != 0) {
+            for (auto spq : this->sells) {
+                if (spq->price == order.price) {
+                    spq->add_order(order);
+                    return;
+                }
+            }
+            this->create_spq(order.price, sell);
+            this->sells.begin()->get()->add_order(order);
+        }
+    }
 
 }
 
@@ -80,4 +72,20 @@ void Book::send_order(ClientCommand command) {
         std::cout << "Received cancel order\n";
         break;
     }
+}
+
+/**
+ * Helper function to give a brief overview of the current Book object
+ */
+std::string Book::to_string() const {
+    std::string result;
+    result += "Buys:\n";
+    for (auto spq : this->buys) {
+        result += std::to_string(spq->price) + " " + std::to_string(spq->volume) + "\n";
+    }
+    result += "Sells:\n";
+    for (auto spq : this->sells) {
+        result += std::to_string(spq->price) + " " + std::to_string(spq->volume) + "\n";
+    }
+    return result;
 }

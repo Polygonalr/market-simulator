@@ -1,11 +1,13 @@
 #include <boost/asio.hpp>
 #include <iostream>
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <shared_mutex>
 #include <deque>
 #include <set>
 #include "engine.hpp"
+#include "spq.hpp"
 #include "book.hpp"
 #include "market.hpp"
 
