@@ -78,6 +78,13 @@ void Engine::start_client_session(
     client_data[client_id]->do_read();
 }
 
+/**
+ * Parses a string and returns a ClientCommand object
+ * TODO For now there will be index-out-of-bounds error if string is not of the correct format lmao
+ * 
+ * @param s the input string
+ * @return resultant ClientCommand object
+ */
 ClientCommand ClientCommand::parse_command(const string &s) {
     std::vector<string> splitted_string = split(s, ' ');
     string instrument = splitted_string[1];
@@ -96,6 +103,12 @@ ClientCommand ClientCommand::parse_command(const string &s) {
     return cc;
 }
 
+/**
+ * Convert ClientCommand object to a string
+ * 
+ * @param self
+ * @return the ClientCommand object as a string
+ */
 string ClientCommand::to_string() const {
     stringstream ss;
     ss << static_cast<char>(type) << " " << price << " " << count << " "
