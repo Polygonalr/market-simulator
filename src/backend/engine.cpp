@@ -5,9 +5,9 @@
 #include <sstream>
 #include <shared_mutex>
 #include <deque>
-#include <set>
-#include "engine.hpp"
+#include <map>
 #include "spq.hpp"
+#include "engine.hpp"
 #include "book.hpp"
 #include "market.hpp"
 
@@ -121,4 +121,9 @@ string ClientCommand::to_string() const {
 std::ostream &operator<<(std::ostream &os, const ClientCommand &cc) {
     os << cc.to_string();
     return os;
+}
+
+ClientCommand::operator Order() {
+    OrderType order_type = (type == input_buy) ? buy : sell;
+    return Order{order_type, 0, price, count};
 }

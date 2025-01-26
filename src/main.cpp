@@ -1,8 +1,10 @@
 #include <iostream>
 #include <memory>
 #include <boost/asio.hpp>
+#include <deque>
 
 #include "io.hpp"
+#include "spq.hpp"
 #include "engine.hpp"
 
 using namespace std;

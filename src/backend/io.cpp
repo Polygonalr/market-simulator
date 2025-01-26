@@ -1,7 +1,9 @@
 #include <boost/asio.hpp>
 #include <iostream>
 #include <memory>
+#include <deque>
 
+#include "spq.hpp"
 #include "engine.hpp"
 #include "io.hpp"
 

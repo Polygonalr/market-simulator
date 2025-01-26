@@ -47,6 +47,8 @@ struct ClientCommand {
     static ClientCommand parse_command(const std::string &);
     std::string to_string() const;
     friend std::ostream &operator<<(std::ostream &os, const ClientCommand &cc);
+    
+    operator Order();
 };
 
 #endif // ENGINE_HPP
