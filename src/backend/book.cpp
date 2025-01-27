@@ -21,15 +21,11 @@ void Book::create_spq(uint32_t price, OrderType type) {
     }
 }
 
-void Book::add_order_to_spq(Order order) {
-    
-}
-
 void Book::send_order(ClientCommand command) {
     std::deque<std::unique_lock<std::mutex>> spq_locks;
     std::deque<std::shared_ptr<SamePriceQueue>> locked_spqs; // for matching
     std::shared_ptr<SamePriceQueue>
-        spq_to_rest_at; // for resting the remaining volume
+        spq_to_rest_at = nullptr; // for resting the remaining volume
     std::unique_lock<std::mutex> resting_spq_lock;
 
     Order order = static_cast<Order>(command);
@@ -49,7 +45,7 @@ void Book::send_order(ClientCommand command) {
     }
 
     if (spq_to_rest_at != nullptr) {
-        // TODO rest the order
+        spq_to_rest_at->add_order(order);
     }
 }
 
@@ -62,14 +58,15 @@ void Book::get_queue_locks(
 
     switch (order.order_type) {
     case buy:
-        std::cout << "Received buy order\n";
         for (auto it : this->sells) {
             auto &key = it.first;
             auto &val = it.second;
+            if (val->volume == 0) {
+                continue;
+            }
             // need to lock the queue first before can_match so that no other
             // threads can touch the queue after can_match
             auto current_spq_lock = std::unique_lock(val->lock);
-            std::cout << "Looking at " << key << " in sell queue\n";
 
             if (val->can_match(order)) {
                 spq_locks.push_back(std::move(current_spq_lock));
@@ -84,14 +81,15 @@ void Book::get_queue_locks(
         }
         break;
     case sell:
-        std::cout << "Received sell order\n";
         for (auto it : this->buys) {
             auto &key = it.first;
             auto &val = it.second;
+            if (val->volume == 0) {
+                continue;
+            }
             // need to lock the queue first before can_match so that no other
             // threads can touch the queue after can_match
             auto current_spq_lock = std::unique_lock(val->lock);
-            std::cout << "Looking at " << key << " in buy queue\n";
 
             if (val->can_match(order)) {
                 spq_locks.push_back(std::move(current_spq_lock));

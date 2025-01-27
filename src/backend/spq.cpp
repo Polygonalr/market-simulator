@@ -30,24 +30,22 @@ Order SamePriceQueue::match_order(Order order) {
         Order next_order = this->orders.front();
         if (next_order.count > order.count) {
             // Fulfill the order in the orderbook partially
-            this->orders.front().count -= order.count;
-            this->volume -= order.count;
-            order.count = 0;
-
             std::cout << "Matched order " << order.order_id << " with "
                       << next_order.order_id << " at price " << next_order.price
                       << ", counts fulfilled: " << order.count << std::endl;
-
+            this->orders.front().count -= order.count;
+            this->volume -= order.count;
+            order.count = 0;
             // return empty order since count = 0
             return order;
         }
         // Fulfill the order in the orderbook fully
-        order.count -= next_order.count;
-        this->volume -= next_order.count;
-        this->orders.pop_front();
         std::cout << "Matched order " << order.order_id << " with "
                   << next_order.order_id << " at price " << next_order.price
                   << ", counts fulfilled: " << next_order.count << std::endl;
+        order.count -= next_order.count;
+        this->volume -= next_order.count;
+        this->orders.pop_front();
     }
 
     // No more orders to match, return the order with leftover count

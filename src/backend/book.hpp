@@ -17,7 +17,6 @@ class Book {
 
   public:
     void create_spq(uint32_t price, OrderType type);
-    void add_order_to_spq(Order order);
     void send_order(ClientCommand command);
     void get_queue_locks(
         Order order, std::deque<std::unique_lock<std::mutex>> &spq_locks,

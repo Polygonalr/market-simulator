@@ -51,7 +51,6 @@ void Client::do_write(std::shared_ptr<std::string> write_buffer) {
         boost::asio::buffer(*write_buffer),
         [this](boost::system::error_code ec, std::size_t) {
             if (!ec) {
-                cout << "Sent message back" << endl;
                 this->do_read();
             }
         });
